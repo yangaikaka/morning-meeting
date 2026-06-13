@@ -28,6 +28,8 @@
   .api-key-input { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--ink); background: white; }
   .api-key-input:focus { outline: none; border-color: var(--gold); }
   .key-toggle { background: none; border: none; cursor: pointer; font-size: 16px; padding: 4px; }
+  .key-hint { font-family: 'DM Mono', monospace; font-size: 10px; color: #999; margin-top: 8px; }
+  .key-hint a { color: var(--gold); text-decoration: none; }
   .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
   .input-card { border: 1.5px dashed var(--border); border-radius: 10px; padding: 20px 12px; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--cream); position: relative; overflow: hidden; }
   .input-card:hover { border-color: var(--gold); background: rgba(201,168,76,0.04); }
@@ -80,12 +82,13 @@
 
 <main>
   <div class="card">
-    <div class="section-title">🔑 Gemini API Key</div>
+    <div class="section-title">🔑 DeepSeek API Key</div>
     <div class="api-key-row">
       <span class="api-key-label">API KEY</span>
-      <input class="api-key-input" id="apiKeyInput" type="password" placeholder="粘贴你的 Gemini API Key（AIza开头）" />
+      <input class="api-key-input" id="apiKeyInput" type="password" placeholder="粘贴你的 DeepSeek API Key（sk-开头）" />
       <button class="key-toggle" onclick="toggleKey()" id="keyToggle">👁️</button>
     </div>
+    <div class="key-hint">在 <a href="https://platform.deepseek.com/api_keys" target="_blank">platform.deepseek.com</a> 获取 Key，Key会保存在本机浏览器中</div>
 
     <br>
     <div class="section-title">📥 上传研究素材</div>
@@ -133,11 +136,11 @@
     `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
 
   // 自动读取保存的Key
-  const saved = localStorage.getItem('gemini_key');
+  const saved = localStorage.getItem('deepseek_key');
   if (saved) document.getElementById('apiKeyInput').value = saved;
 
   document.getElementById('apiKeyInput').addEventListener('blur', function() {
-    if (this.value.trim()) localStorage.setItem('gemini_key', this.value.trim());
+    if (this.value.trim()) localStorage.setItem('deepseek_key', this.value.trim());
   });
 
   function toggleKey() {
@@ -184,8 +187,8 @@
     const text = document.getElementById('textInput').value.trim();
     const allFiles = [...files.audio, ...files.doc];
 
-    if (!key) { showError('❌ 请先填入 Gemini API Key'); return; }
-    if (!key.startsWith('AIza')) { showError('❌ API Key 格式不对，应该以 AIza 开头，请检查'); return; }
+    if (!key) { showError('❌ 请先填入 DeepSeek API Key'); return; }
+    if (!key.startsWith('sk-')) { showError('❌ API Key 格式不对，应该以 sk- 开头，请检查'); return; }
     if (!text && allFiles.length === 0) { showError('❌ 请上传文件或粘贴文字内容'); return; }
 
     setLoading(true);
@@ -199,17 +202,24 @@
       }
       const content = parts.join('\n\n---\n\n');
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`;
-      
+      const url = `https://api.deepseek.com/chat/completions`;
+
       const body = {
-        system_instruction: { parts: [{ text: PROMPT }] },
-        contents: [{ parts: [{ text: `请根据以下晨会素材生成今日晨会摘要：\n\n${content}` }] }],
-        generationConfig: { maxOutputTokens: 2000, temperature: 0.7 }
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'system', content: PROMPT },
+          { role: 'user', content: `请根据以下晨会素材生成今日晨会摘要：\n\n${content}` }
+        ],
+        max_tokens: 2000,
+        temperature: 0.7
       };
 
       const resp = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${key}`
+        },
         body: JSON.stringify(body)
       });
 
@@ -220,10 +230,10 @@
         throw new Error(`API错误 ${resp.status}：${errMsg}`);
       }
 
-      const result = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      const result = data?.choices?.[0]?.message?.content;
       if (!result) throw new Error('返回内容为空，原始数据：' + JSON.stringify(data).slice(0, 200));
 
-      showResult(result, data.usageMetadata);
+      showResult(result, data.usage);
 
     } catch(e) {
       showError('❌ ' + (e.message || '未知错误'));
@@ -245,7 +255,7 @@
     document.getElementById('resultBody').textContent = text;
     s.style.display = 'block';
     if (usage) document.getElementById('tokenInfo').textContent =
-      `输入 ${usage.promptTokenCount||0} tokens · 输出 ${usage.candidatesTokenCount||0} tokens`;
+      `输入 ${usage.prompt_tokens||0} tokens · 输出 ${usage.completion_tokens||0} tokens`;
     setTimeout(() => s.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
   }
 
