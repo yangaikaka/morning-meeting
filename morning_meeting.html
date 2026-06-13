@@ -4,277 +4,386 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>晨会摘要生成器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=DM+Mono:wght@400;500&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
   :root {
-    --ink: #1a1a2e; --ink-light: #2d2d4a; --gold: #c9a84c; --gold-light: #e8c97a;
-    --cream: #faf8f2; --cream-dark: #f0ece0; --red: #c0392b; --green: #1a6b3c;
-    --border: #d4c9a8; --shadow: rgba(26,26,46,0.12);
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--cream); color: var(--ink); font-family: 'Noto Serif SC', serif; min-height: 100vh; }
-  header { background: var(--ink); padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid var(--gold); position: sticky; top: 0; z-index: 100; }
-  .logo { display: flex; align-items: center; gap: 12px; }
-  .logo-icon { width: 36px; height: 36px; background: var(--gold); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
-  .logo-text h1 { font-size: 16px; font-weight: 700; color: var(--cream); letter-spacing: 2px; }
-  .logo-text p { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--gold); letter-spacing: 2px; margin-top: 2px; }
-  .date-badge { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--gold-light); }
-  main { max-width: 800px; margin: 0 auto; padding: 28px 16px; }
-  .card { background: white; border: 1.5px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 16px var(--shadow); }
-  .section-title { font-size: 11px; font-weight: 600; color: var(--gold); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-  .api-key-row { background: var(--cream-dark); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
-  .api-key-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--gold); letter-spacing: 1px; white-space: nowrap; }
-  .api-key-input { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--ink); background: white; }
-  .api-key-input:focus { outline: none; border-color: var(--gold); }
-  .key-toggle { background: none; border: none; cursor: pointer; font-size: 16px; padding: 4px; }
-  .key-hint { font-family: 'DM Mono', monospace; font-size: 10px; color: #999; margin-top: 8px; }
-  .key-hint a { color: var(--gold); text-decoration: none; }
-  .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-  .input-card { border: 1.5px dashed var(--border); border-radius: 10px; padding: 20px 12px; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--cream); position: relative; overflow: hidden; }
-  .input-card:hover { border-color: var(--gold); background: rgba(201,168,76,0.04); }
-  .input-card.active { border-color: var(--gold); border-style: solid; }
-  .input-card input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
-  .card-icon { font-size: 24px; margin-bottom: 6px; }
-  .card-label { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
-  .card-hint { font-family: 'DM Mono', monospace; font-size: 9px; color: #888; }
-  .file-list { background: var(--cream-dark); border-radius: 8px; padding: 10px 14px; margin-top: 10px; display: none; }
-  .file-list.show { display: block; }
-  .file-item { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 11px; font-family: 'DM Mono', monospace; color: var(--ink-light); }
-  .divider { display: flex; align-items: center; gap: 10px; margin: 14px 0; color: #aaa; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; }
-  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-  .text-input-area { width: 100%; border: 1.5px solid var(--border); border-radius: 10px; padding: 14px; font-family: 'Noto Serif SC', serif; font-size: 13px; color: var(--ink); background: var(--cream); resize: vertical; min-height: 120px; line-height: 1.8; }
-  .text-input-area:focus { outline: none; border-color: var(--gold); background: white; }
-  .text-input-area::placeholder { color: #bbb; }
-  .generate-btn { width: 100%; padding: 16px; background: var(--ink); color: var(--gold); border: none; border-radius: 12px; font-family: 'Noto Serif SC', serif; font-size: 15px; font-weight: 700; letter-spacing: 3px; cursor: pointer; transition: all 0.2s; margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 10px; }
-  .generate-btn:hover { background: var(--ink-light); }
-  .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .loading-spinner { width: 18px; height: 18px; border: 2px solid rgba(201,168,76,0.3); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; display: none; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .progress-bar { height: 3px; background: var(--border); border-radius: 2px; margin: 12px 0 0; overflow: hidden; display: none; }
-  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-light)); border-radius: 2px; animation: progress 2s ease-in-out infinite; width: 40%; }
-  @keyframes progress { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
-  .error-box { background: #fff5f5; border: 1px solid #fcc; border-radius: 8px; padding: 14px 16px; color: var(--red); font-size: 13px; margin-top: 12px; display: none; line-height: 1.6; word-break: break-all; }
-  .result-section { background: white; border: 1.5px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: 0 2px 16px var(--shadow); display: none; animation: fadeIn 0.4s ease; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-  .result-header { background: var(--ink); padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; }
-  .result-title { font-size: 14px; font-weight: 700; color: var(--cream); letter-spacing: 2px; }
-  .btn-copy { padding: 8px 16px; border-radius: 8px; font-family: 'DM Mono', monospace; font-size: 11px; cursor: pointer; transition: all 0.15s; border: 1px solid var(--gold); background: transparent; color: var(--gold); }
-  .btn-copy:hover { background: var(--gold); color: var(--ink); }
-  .btn-copy.copied { background: var(--green); border-color: var(--green); color: white; }
-  .result-body { padding: 28px; font-size: 14px; line-height: 2; color: var(--ink); white-space: pre-wrap; font-family: 'Noto Serif SC', serif; min-height: 100px; }
-  .result-footer { padding: 14px 24px; background: var(--cream); border-top: 1px solid var(--border); }
-  .token-info { font-family: 'DM Mono', monospace; font-size: 10px; color: #999; }
-</style>
-</head>
-<body>
-
-<header>
-  <div class="logo">
-    <div class="logo-icon">📋</div>
-    <div class="logo-text">
-      <h1>晨会摘要生成器</h1>
-      <p>Morning Brief · AI Assistant</p>
-    </div>
-  </div>
-  <div class="date-badge" id="dateDisplay"></div>
-</header>
-
-<main>
-  <div class="card">
-    <div class="section-title">🔑 DeepSeek API Key</div>
-    <div class="api-key-row">
-      <span class="api-key-label">API KEY</span>
-      <input class="api-key-input" id="apiKeyInput" type="password" placeholder="粘贴你的 DeepSeek API Key（sk-开头）" />
-      <button class="key-toggle" onclick="toggleKey()" id="keyToggle">👁️</button>
-    </div>
-    <div class="key-hint">在 <a href="https://platform.deepseek.com/api_keys" target="_blank">platform.deepseek.com</a> 获取 Key，Key会保存在本机浏览器中</div>
-
-    <br>
-    <div class="section-title">📥 上传研究素材</div>
-    <div class="input-grid">
-      <div class="input-card" id="audioCard">
-        <input type="file" accept="audio/*,.mp3,.wav,.m4a,.aac" multiple onchange="handleFile(this,'audio')">
-        <div class="card-icon">🎙️</div>
-        <div class="card-label">录音文件</div>
-        <div class="card-hint">MP3 / WAV / M4A</div>
-      </div>
-      <div class="input-card" id="docCard">
-        <input type="file" accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" multiple onchange="handleFile(this,'doc')">
-        <div class="card-icon">📄</div>
-        <div class="card-label">研报文档</div>
-        <div class="card-hint">PDF / Word / 图片</div>
-      </div>
-    </div>
-    <div class="file-list" id="fileList"></div>
-    <div class="divider">或直接粘贴文字内容</div>
-    <textarea class="text-input-area" id="textInput" placeholder="粘贴转录稿、研报文字、或直接输入晨会内容……"></textarea>
-    <div class="progress-bar" id="progressBar"><div class="progress-fill"></div></div>
-    <div class="error-box" id="errorBox"></div>
-    <button class="generate-btn" id="generateBtn" onclick="generate()">
-      <div class="loading-spinner" id="spinner"></div>
-      <span id="btnText">✨ 生成晨会摘要</span>
-    </button>
-  </div>
-
-  <div class="result-section" id="resultSection">
-    <div class="result-header">
-      <div class="result-title">📨 今日晨会摘要</div>
-      <button class="btn-copy" id="copyBtn" onclick="copyResult()">复制全文</button>
-    </div>
-    <div class="result-body" id="resultBody"></div>
-    <div class="result-footer">
-      <div class="token-info" id="tokenInfo"></div>
-    </div>
-  </div>
-</main>
-
-<script>
-  // 日期
-  const now = new Date();
-  document.getElementById('dateDisplay').textContent =
-    `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
-
-  // 自动读取保存的Key
-  const saved = localStorage.getItem('deepseek_key');
-  if (saved) document.getElementById('apiKeyInput').value = saved;
-
-  document.getElementById('apiKeyInput').addEventListener('blur', function() {
-    if (this.value.trim()) localStorage.setItem('deepseek_key', this.value.trim());
-  });
-
-  function toggleKey() {
-    const el = document.getElementById('apiKeyInput');
-    const btn = document.getElementById('keyToggle');
-    el.type = el.type === 'password' ? 'text' : 'password';
-    btn.textContent = el.type === 'password' ? '👁️' : '🙈';
+    --navy: #1a1a2e;
+    --navy-light: #16213e;
+    --gold: #c9a84c;
+    --gold-light: #e8c96d;
+    --gold-pale: #f5ecd3;
+    --bg: #faf8f2;
+    --white: #ffffff;
+    --text: #1e1e2e;
+    --text-muted: #6b6b7b;
+    --border: #e8e2d4;
+    --error: #d64045;
+    --success: #2d7d46;
+    --radius: 16px;
+    --shadow: 0 4px 24px rgba(26,26,46,0.08);
   }
 
-  let files = { audio: [], doc: [] };
-
-  function handleFile(input, type) {
-    files[type] = Array.from(input.files);
-    document.getElementById(type === 'audio' ? 'audioCard' : 'docCard').classList.add('active');
-    const all = [...files.audio, ...files.doc];
-    const list = document.getElementById('fileList');
-    list.classList.add('show');
-    list.innerHTML = all.map(f => `<div class="file-item"><span>${f.name.match(/\.(mp3|wav|m4a)$/i)?'🎙️':'📄'}</span><span>${f.name}</span><span style="margin-left:auto;color:#bbb">${(f.size/1024).toFixed(0)}KB</span></div>`).join('');
+  body {
+    font-family: 'Noto Serif SC', serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.7;
   }
 
-  function readText(file) {
-    return new Promise(resolve => {
-      if (file.type.startsWith('audio')) { resolve(`[音频：${file.name}，请转录后粘贴]`); return; }
-      const r = new FileReader();
-      r.onload = e => resolve(e.target.result);
-      r.onerror = () => resolve(`[读取失败：${file.name}]`);
-      r.readAsText(file, 'utf-8');
-    });
+  nav {
+    background: var(--navy);
+    border-bottom: 2px solid var(--gold);
+    padding: 0 32px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .nav-logo {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 0.06em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .nav-logo .dot {
+    width: 8px; height: 8px;
+    background: var(--gold);
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50% { opacity:0.5; transform:scale(0.7); }
+  }
+  .nav-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: rgba(201,168,76,0.6);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
   }
 
-  const PROMPT = `你是一位专业的证券销售，负责每天整理研究部的晨会资料，提炼核心观点，传达给投资者客户。
-
-输出规范：
-1. 分行业、分个股逐一小结，层次清晰
-2. 数据优先：行业类重点提炼行业空间测算数据；个股类重点提炼估值依据（PE/PB/目标价/评级等）
-3. 涉及上市公司必须标注股票代码，格式：公司名（代码），例如：宁德时代（300750）
-4. 每个小节加合适的emoji图标，让内容生动活泼
-5. 输出风格简洁专业，适合直接发送微信群
-6. 如有多个行业，用分隔线或标题清晰区分
-7. 结尾加一句简短的总结或市场展望`;
-
-  async function generate() {
-    const key = document.getElementById('apiKeyInput').value.trim();
-    const text = document.getElementById('textInput').value.trim();
-    const allFiles = [...files.audio, ...files.doc];
-
-    if (!key) { showError('❌ 请先填入 DeepSeek API Key'); return; }
-    if (!key.startsWith('sk-')) { showError('❌ API Key 格式不对，应该以 sk- 开头，请检查'); return; }
-    if (!text && allFiles.length === 0) { showError('❌ 请上传文件或粘贴文字内容'); return; }
-
-    setLoading(true);
-
-    try {
-      let parts = [];
-      if (text) parts.push(text);
-      for (const f of allFiles) {
-        const t = await readText(f);
-        parts.push(`【${f.name}】\n${t}`);
-      }
-      const content = parts.join('\n\n---\n\n');
-
-      const url = `https://api.deepseek.com/chat/completions`;
-
-      const body = {
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: PROMPT },
-          { role: 'user', content: `请根据以下晨会素材生成今日晨会摘要：\n\n${content}` }
-        ],
-        max_tokens: 2000,
-        temperature: 0.7
-      };
-
-      const resp = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${key}`
-        },
-        body: JSON.stringify(body)
-      });
-
-      const data = await resp.json();
-
-      if (!resp.ok) {
-        const errMsg = data?.error?.message || JSON.stringify(data);
-        throw new Error(`API错误 ${resp.status}：${errMsg}`);
-      }
-
-      const result = data?.choices?.[0]?.message?.content;
-      if (!result) throw new Error('返回内容为空，原始数据：' + JSON.stringify(data).slice(0, 200));
-
-      showResult(result, data.usage);
-
-    } catch(e) {
-      showError('❌ ' + (e.message || '未知错误'));
-    } finally {
-      setLoading(false);
-    }
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
   }
 
-  function setLoading(on) {
-    document.getElementById('generateBtn').disabled = on;
-    document.getElementById('spinner').style.display = on ? 'block' : 'none';
-    document.getElementById('btnText').textContent = on ? '正在生成…' : '✨ 生成晨会摘要';
-    document.getElementById('progressBar').style.display = on ? 'block' : 'none';
-    document.getElementById('errorBox').style.display = 'none';
+  .hero {
+    text-align: center;
+    margin-bottom: 40px;
+    padding: 36px 0 20px;
+  }
+  .hero h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--navy);
+    line-height: 1.3;
+    margin-bottom: 8px;
+  }
+  .hero h1 span { color: var(--gold); }
+  .hero p {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.04em;
+  }
+  .hero-divider {
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--gold), transparent);
+    margin: 16px auto 0;
   }
 
-  function showResult(text, usage) {
-    const s = document.getElementById('resultSection');
-    document.getElementById('resultBody').textContent = text;
-    s.style.display = 'block';
-    if (usage) document.getElementById('tokenInfo').textContent =
-      `输入 ${usage.prompt_tokens||0} tokens · 输出 ${usage.completion_tokens||0} tokens`;
-    setTimeout(() => s.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  .card {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(135deg, #fdfbf7 0%, #f9f6ee 100%);
+  }
+  .card-header .section-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--gold);
+    background: var(--gold-pale);
+    border: 1px solid var(--gold);
+    border-radius: 4px;
+    padding: 2px 7px;
+    letter-spacing: 0.08em;
+  }
+  .card-header h2 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--navy);
+  }
+  .card-body { padding: 20px 24px; }
+
+  /* API KEY */
+  .api-row { display: flex; gap: 10px; align-items: center; }
+  .api-row .input-wrap { flex: 1; position: relative; }
+  .api-row input {
+    width: 100%;
+    padding: 11px 44px 11px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .api-row input:focus { border-color: var(--gold); }
+  .eye-btn {
+    position: absolute; right: 12px; top: 50%;
+    transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); padding: 2px;
+    display: flex; align-items: center; transition: color 0.2s;
+  }
+  .eye-btn:hover { color: var(--gold); }
+  .api-hint {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem; color: var(--text-muted);
+    margin-top: 8px; letter-spacing: 0.03em;
+  }
+  .api-hint .ok { color: var(--success); }
+  .api-hint .err { color: var(--error); }
+
+  /* TABS */
+  .tabs {
+    display: flex; gap: 4px; margin-bottom: 16px;
+    background: var(--bg); border-radius: 10px;
+    padding: 4px; border: 1px solid var(--border);
+  }
+  .tab-btn {
+    flex: 1; padding: 8px 4px; border: none;
+    background: none; border-radius: 8px;
+    font-family: 'Noto Serif SC', serif;
+    font-size: 0.8rem; color: var(--text-muted);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .tab-btn.active {
+    background: var(--white); color: var(--navy);
+    font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* UPLOAD */
+  .upload-zone {
+    border: 2px dashed var(--border); borde<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>晨会摘要生成器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy: #1a1a2e;
+    --navy-light: #16213e;
+    --gold: #c9a84c;
+    --gold-light: #e8c96d;
+    --gold-pale: #f5ecd3;
+    --bg: #faf8f2;
+    --white: #ffffff;
+    --text: #1e1e2e;
+    --text-muted: #6b6b7b;
+    --border: #e8e2d4;
+    --error: #d64045;
+    --success: #2d7d46;
+    --radius: 16px;
+    --shadow: 0 4px 24px rgba(26,26,46,0.08);
   }
 
-  function showError(msg) {
-    const box = document.getElementById('errorBox');
-    box.textContent = msg;
-    box.style.display = 'block';
+  body {
+    font-family: 'Noto Serif SC', serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.7;
   }
 
-  async function copyResult() {
-    const text = document.getElementById('resultBody').textContent;
-    const btn = document.getElementById('copyBtn');
-    try {
-      await navigator.clipboard.writeText(text);
-      btn.textContent = '✅ 已复制';
-      btn.classList.add('copied');
-      setTimeout(() => { btn.textContent = '复制全文'; btn.classList.remove('copied'); }, 2000);
-    } catch { btn.textContent = '复制失败'; }
+  nav {
+    background: var(--navy);
+    border-bottom: 2px solid var(--gold);
+    padding: 0 32px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
   }
-</script>
-</body>
-</html>
+  .nav-logo {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 0.06em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .nav-logo .dot {
+    width: 8px; height: 8px;
+    background: var(--gold);
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50% { opacity:0.5; transform:scale(0.7); }
+  }
+  .nav-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: rgba(201,168,76,0.6);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  .hero {
+    text-align: center;
+    margin-bottom: 40px;
+    padding: 36px 0 20px;
+  }
+  .hero h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--navy);
+    line-height: 1.3;
+    margin-bottom: 8px;
+  }
+  .hero h1 span { color: var(--gold); }
+  .hero p {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.04em;
+  }
+  .hero-divider {
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--gold), transparent);
+    margin: 16px auto 0;
+  }
+
+  .card {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(135deg, #fdfbf7 0%, #f9f6ee 100%);
+  }
+  .card-header .section-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--gold);
+    background: var(--gold-pale);
+    border: 1px solid var(--gold);
+    border-radius: 4px;
+    padding: 2px 7px;
+    letter-spacing: 0.08em;
+  }
+  .card-header h2 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--navy);
+  }
+  .card-body { padding: 20px 24px; }
+
+  /* API KEY */
+  .api-row { display: flex; gap: 10px; align-items: center; }
+  .api-row .input-wrap { flex: 1; position: relative; }
+  .api-row input {
+    width: 100%;
+    padding: 11px 44px 11px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .api-row input:focus { border-color: var(--gold); }
+  .eye-btn {
+    position: absolute; right: 12px; top: 50%;
+    transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); padding: 2px;
+    display: flex; align-items: center; transition: color 0.2s;
+  }
+  .eye-btn:hover { color: var(--gold); }
+  .api-hint {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem; color: var(--text-muted);
+    margin-top: 8px; letter-spacing: 0.03em;
+  }
+  .api-hint .ok { color: var(--success); }
+  .api-hint .err { color: var(--error); }
+
+  /* TABS */
+  .tabs {
+    display: flex; gap: 4px; margin-bottom: 16px;
+    background: var(--bg); border-radius: 10px;
+    padding: 4px; border: 1px solid var(--border);
+  }
+  .tab-btn {
+    flex: 1; padding: 8px 4px; border: none;
+    background: none; border-radius: 8px;
+    font-family: 'Noto Serif SC', serif;
+    font-size: 0.8rem; color: var(--text-muted);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .tab-btn.active {
+    background: var(--white); color: var(--navy);
+    font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* UPLOAD */
+  .upload-zone {
+    border: 2px dashed var(--border); borde
